@@ -12,7 +12,7 @@ The two name systems have different trust and update models:
 - `.eth` is submitted manually through the ZeroName social layer. A server-side processor verifies the name against Ethereum mainnet and publishes a signed registry update.
 - A `.eth` record resolves to the Ethereum `0x` site identity used by ZirohNeth Content v2. It does not resolve to an IPFS CID or content hash.
 
-Implementation is coordinated with the companion [ZirohNeth roadmap](https://github.com/Floflis/ZirohNeth/blob/main/docs/architecture/ENS-NAME-RESOLUTION-ROADMAP.md).
+Implementation is coordinated with the companion [ZirohNeth roadmap](https://github.com/Floflis/ZirohNeth/pull/13).
 
 ## 🌈 Goals
 
