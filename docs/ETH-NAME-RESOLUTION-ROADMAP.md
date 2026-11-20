@@ -116,24 +116,28 @@ A future expiration timestamp in an old cached response is not, by itself, proof
 - No background ENS watcher is required; refresh is manual/on-demand.
 - Public RPC endpoints must be configurable and failure-aware. Do not hard-code a single provider as an availability guarantee.
 - ENS normalization must use a standards-compliant implementation, not lowercase-only conversion.
-- The request processor must not hold the publication private key unless the repository's existing architecture makes separation impossible and the risk is explicitly reviewed.
+- The ENS request processor must not hold, read, or otherwise access the publication private key. If the current repository structure couples verification and publication, split the privileged signer/publisher boundary before implementation; do not silently waive this requirement.
 - Never trust the submitted destination, client cache, or ENS Data cache as proof.
 - Never publish an entry if address resolution and registration validity checks disagree or cannot be completed.
 - The ENS `addr()` destination is the target identity. Registrar owner/controller and resolver destination are distinct concepts.
 
 ## 🌈 Central signer and trust model
 
-The historical ZeroName pipeline is not fully decentralized at the publication-authority layer. The Namecoin blockchain is the source of `.bit` registration data, but the traditional updater runs on an operator-controlled machine: it connects to a local Namecoin RPC endpoint, reads the ZeroName site's registry, and invokes `siteSign ... --publish` with a configured site private key when the registry changes. The P2P network distributes the signed site, but possession of the site signing key authorizes registry updates.
+The historical ZeroName deployment separated the client resolver plugin from the registry updater:
+
+- The **client-side** `plugins/Zeroname/SiteManagerPlugin.py` integrates with `SiteManager`, obtains the configured `--bit_resolver` ZeroName site (the historical default points to a public ZeroName site), and loads `data/names.json` from that site to resolve `.bit` names. It does not run the Namecoin updater and does not need the publisher's private key.
+- The **operator-side** `plugins/Zeroname/updater/zeroname_updater.py` is a separate process. The operator creates/maintains a ZeroName site, initializes its `data/names.json`, runs a Namecoin node with RPC enabled, and configures `zeroname_config.json` with the ZeroNet path, site address, private key, and processing checkpoint. The updater reads Namecoin blocks through RPC, updates the local `data/names.json`, and invokes `zeronet.py siteSign <site> <privatekey> --publish` when it detects changes. Signing/publication is automated by the updater; the operator does not need to manually sign each block's update.
+- The historical README explicitly describes creating your own ZeroName site and running your own updater. Therefore, the software does not enforce one unique global operator. However, clients trust the ZeroName site selected by their `--bit_resolver` setting. A shared/default public resolver creates a practical central point of trust for the clients configured to use it.
 
 Keep these roles distinct:
 
 - **Namecoin / ENS:** authoritative blockchain state for the respective name system.
+- **Namecoin updater / ENS verifier:** reads and validates upstream state; the historical Namecoin updater also mutates the local registry.
 - **ZeroName registry:** a published index/cache of mappings, not the underlying name system.
-- **Updater / ENS verifier:** reads and validates upstream state.
-- **Publisher / signer:** authorizes and publishes a new registry revision.
-- **ZeroName client plugin:** consumes the published registry; it does not need to operate the central updater or hold its key.
+- **Publisher / signer:** the operator-controlled authority that signs and publishes a registry revision.
+- **ZeroName client plugin:** consumes the configured published registry; it does not operate the updater or hold the publication key.
 
-This is decentralized distribution with a centralized (or small trusted-group) write authority. It is not accurate to describe the complete ZeroName naming path as trustless.
+This is decentralized distribution of a signed site, with a configurable publisher trust point. It is not accurate to describe the complete naming path as trustless, but it is also inaccurate to claim the protocol requires one exclusive global operator.
 
 For the `.eth` implementation:
 
@@ -145,6 +149,14 @@ For the `.eth` implementation:
 - Document the residual trust assumption in both server and client UX/security notes.
 
 A future decentralization track may explore independent verifiers, public audit/transparency logs, multiple publishers, or threshold/multisignature authorization. These are not silently assumed to exist in this roadmap and must be designed and tested separately.
+
+### 🌈 Historical implementation references
+
+These upstream ZeroNet references describe the historical implementation being audited; they do not assert that the current Floflis fork has identical files or behavior:
+
+- [ZeroName plugin README](https://github.com/HelloZeroNet/ZeroNet/blob/py3/plugins/Zeroname/README.md)
+- [Namecoin updater](https://github.com/HelloZeroNet/ZeroNet/blob/py3/plugins/Zeroname/updater/zeroname_updater.py)
+- [Client SiteManager plugin](https://github.com/HelloZeroNet/ZeroNet/blob/py3/plugins/Zeroname/SiteManagerPlugin.py)
 
 ## 🌈 Out of scope
 
