@@ -121,6 +121,31 @@ A future expiration timestamp in an old cached response is not, by itself, proof
 - Never publish an entry if address resolution and registration validity checks disagree or cannot be completed.
 - The ENS `addr()` destination is the target identity. Registrar owner/controller and resolver destination are distinct concepts.
 
+## 🌈 Central signer and trust model
+
+The historical ZeroName pipeline is not fully decentralized at the publication-authority layer. The Namecoin blockchain is the source of `.bit` registration data, but the traditional updater runs on an operator-controlled machine: it connects to a local Namecoin RPC endpoint, reads the ZeroName site's registry, and invokes `siteSign ... --publish` with a configured site private key when the registry changes. The P2P network distributes the signed site, but possession of the site signing key authorizes registry updates.
+
+Keep these roles distinct:
+
+- **Namecoin / ENS:** authoritative blockchain state for the respective name system.
+- **ZeroName registry:** a published index/cache of mappings, not the underlying name system.
+- **Updater / ENS verifier:** reads and validates upstream state.
+- **Publisher / signer:** authorizes and publishes a new registry revision.
+- **ZeroName client plugin:** consumes the published registry; it does not need to operate the central updater or hold its key.
+
+This is decentralized distribution with a centralized (or small trusted-group) write authority. It is not accurate to describe the complete ZeroName naming path as trustless.
+
+For the `.eth` implementation:
+
+- Treat social submissions and the request processor as untrusted inputs. They must not hold or access the publication key.
+- Separate request intake, ENS verification, registry mutation, and signing/publication into explicit trust boundaries.
+- Make publication auditable: retain request ID, normalized name, verification result, RPC/provider, chain ID, block number/hash where available, expiry, signer/publication revision, and timestamps.
+- Protect the signing key, document backup/rotation/recovery, and ensure a compromised request processor cannot sign arbitrary mappings.
+- Preserve the distinction between the authoritative ENS state and ZeroName's signed snapshot. A valid ZeroName signature proves which publisher authorized the snapshot; it does not independently prove that every ENS claim in it is true or current.
+- Document the residual trust assumption in both server and client UX/security notes.
+
+A future decentralization track may explore independent verifiers, public audit/transparency logs, multiple publishers, or threshold/multisignature authorization. These are not silently assumed to exist in this roadmap and must be designed and tested separately.
+
 ## 🌈 Out of scope
 
 - IPFS, content-hash, or gateway resolution.
